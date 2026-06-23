@@ -1,21 +1,17 @@
-name: Gemini Auto Factory
+name: Auto Post
 on:
   workflow_dispatch:
+  schedule:
+    - cron: '0 9 * * *' # Otomatis jalan tiap jam 9 pagi setiap hari
 
 jobs:
-  run_machine:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Setup Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: '3.9'
-      - name: Install dependencies
-        run: |
-          pip install --upgrade pip
-          pip install google-genai requests tweepy
-      - name: Jalankan Mesin Gemini
+      - name: Install
+        run: pip install google-genai tweepy
+      - name: Run
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           TWITTER_CONSUMER_KEY: ${{ secrets.TWITTER_CONSUMER_KEY }}
