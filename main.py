@@ -1,12 +1,16 @@
 import os
 import google.generativeai as genai
 
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+# Konfigurasi
+api_key = os.getenv("GEMINI_API_KEY")
+genai.configure(api_key=api_key)
 
-# Mencetak daftar model yang tersedia untuk API Key Anda
-print("Model yang tersedia:")
-for m in genai.list_models():
-    if 'generateContent' in m.supported_generation_methods:
-        print(f"Nama Model: {m.name}")
-
-# Pilih salah satu dari daftar yang muncul di LOG nanti
+print("--- DIAGNOSA SISTEM ---")
+try:
+    models = genai.list_models()
+    for m in models:
+        if 'generateContent' in m.supported_generation_methods:
+            print(f"Model tersedia: {m.name}")
+except Exception as e:
+    print(f"Error saat list models: {e}")
+    
