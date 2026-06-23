@@ -1,30 +1,21 @@
 import os
 import google.generativeai as genai
-import requests
 
-# Konfigurasi Gemini
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-model = genai.GenerativeModel('gemini-pro')
+# Konfigurasi dengan API Key dari Secret
+api_key = os.getenv("GEMINI_API_KEY")
+genai.configure(api_key=api_key)
 
-def buat_produk(topic):
-    prompt = f"Tulis E-book panduan profesional tentang '{topic}'. Gunakan format Markdown yang rapi, mencakup problem-solution, langkah praktis, dan tips ahli. Jadikan konten ini premium dan siap jual."
-    response = model.generate_content(prompt)
-    return response.text
+# Menggunakan daftar model yang didukung secara resmi
+# Kita panggil model 1.5 flash dengan format yang benar
+model = genai.GenerativeModel('models/gemini-1.5-flash')
 
 def run_factory():
-    # Daftar topik yang akan diolah otomatis
-    topics = ["AI Business Automation", "Digital Productivity Tools", "Passive Income via AI"]
-    
-    for topic in topics:
-        print(f"--- Memulai produksi: {topic} ---")
-        konten = buat_produk(topic)
-        
-        # Di sini skrip akan lanjut ke fungsi upload Gumroad & posting Twitter
-        print(f"Produk '{topic}' berhasil dibuat!")
-        # Simpan ke file .md atau langsung kirim ke API Gumroad
-        with open(f"{topic}.md", "w") as f:
-            f.write(konten)
+    try:
+        response = model.generate_content("Tulis satu kalimat sapaan pendek.")
+        print("Berhasil terhubung ke Gemini!")
+        print("Jawaban:", response.text)
+    except Exception as e:
+        print(f"Gagal terhubung: {e}")
 
 if __name__ == "__main__":
     run_factory()
-  
