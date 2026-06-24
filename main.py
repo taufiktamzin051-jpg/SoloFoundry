@@ -1,14 +1,24 @@
 import os
 import time
+import datetime
 import tweepy
 import requests
 from google import genai
-from google.genai import errors
 
-# 1. Inisialisasi Gemini (Pastikan API Key sudah di GitHub Secrets)
+# Inisialisasi API
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
-# 2. Fungsi Posting Twitter
+# Jadwal produksi mingguan
+JADWAL_PRODUKSI = {
+    0: "E-book",              # Senin
+    1: "Notion Template",      # Selasa
+    2: "Graphic Asset",        # Rabu
+    3: "Course Outline",       # Kamis
+    4: "UI/UX Kit",            # Jumat
+    5: "Worksheet Bundle",     # Sabtu
+    6: "Newsletter Guide"      # Minggu
+}
+
 def post_to_twitter(text):
     auth = tweepy.OAuth1UserHandler(
         os.getenv("TWITTER_CONSUMER_KEY"), os.getenv("TWITTER_CONSUMER_SECRET"),
@@ -18,9 +28,7 @@ def post_to_twitter(text):
     api.update_status(text)
     print("✅ Twitter: Tweet berhasil diposting!")
 
-# 3. Fungsi Upload Gumroad
 def upload_ke_gumroad(title, description):
-    print(f"🔄 Gumroad: Mengunggah produk '{title}'...")
     url = "https://api.gumroad.com/v2/products"
     data = {
         "access_token": os.getenv("GUMROAD_ACCESS_TOKEN"),
@@ -30,44 +38,39 @@ def upload_ke_gumroad(title, description):
         "product[published]": "true"
     }
     response = requests.post(url, data=data)
+    
     if response.status_code == 200:
-        print("✅ Gumroad: Produk berhasil diunggah!")
+        product_url = response.json()['product']['url']
+        print(f"✅ Gumroad: Berhasil! URL: {product_url}")
+        return product_url
     else:
-        print(f"❌ Gumroad: Gagal! Error: {response.text}")
-        raise Exception("Upload Gumroad Gagal")
+        print(f"❌ Gumroad Gagal: {response.text}")
+        return None
 
-# 4. Fungsi Utama
 def run_factory():
-    print("🚀 Pabrik mulai beroperasi...")
+    # 1. Deteksi hari ini
+    hari_ini = datetime.datetime.now().weekday()
+    jenis = JADWAL_PRODUKSI.get(hari_ini, "Premium Digital Asset")
     
-    # Generate Judul
-    judul_res = client.models.generate_content(
-        model="gemini-2.0-flash", 
-        contents="Generate a high-converting digital product title for the US market in professional English."
-    )
-    judul = judul_res.text.strip()
-    print(f"📄 Judul: {judul}")
+    print(f"🚀 Pabrik mode '{jenis}' aktif.")
     
-    time.sleep(15) # JEDA PENTING: Mencegah error 429 (Quota Limit)
+    # 2. Generate Konten
+    judul = client.models.generate_content(model="gemini-2.0-flash", contents=f"Generate a viral premium title for a {jenis} in English.").text.strip()
+    time.sleep(15) 
+    isi = client.models.generate_content(model="gemini-2.0-flash", contents=f"Write a persuasive sales description in English for: '{judul}'. Include a 'Why it's worth it' section.").text
     
-    # Generate Deskripsi
-    isi_res = client.models.generate_content(
-        model="gemini-2.0-flash", 
-        contents=f"Write a compelling product description in English for: '{judul}'. Include features and benefits."
-    )
-    isi = isi_res.text
+    # 3. Upload & Dapatkan URL
+    product_link = upload_ke_gumroad(judul, isi)
     
-    # Eksekusi Proses
-    upload_ke_gumroad(judul, isi)
-    post_to_twitter(f"🚀 New digital product released: {judul}! Check it out and transform your workflow. #DigitalProduct #PassiveIncome")
-    
-    print("🎉 Selesai! Semua proses sukses.")
+    # 4. Tweet jika upload sukses
+    if product_link:
+        post_to_twitter(f"🚀 New Premium {jenis} just released: {judul}! Elevate your game today. Get it here: {product_link} #DigitalProduct #PassiveIncome")
+        print(f"🎉 Selesai! {jenis} telah terbit.")
+    else:
+        print("⚠️ Gagal memposting ke Twitter karena upload gagal.")
 
 if __name__ == "__main__":
     try:
         run_factory()
-    except errors.ClientError as e:
-        print(f"⚠️ Error Gemini API (Quota/Limit): {e}")
     except Exception as e:
         print(f"⚠️ Terjadi error: {e}")
-    
