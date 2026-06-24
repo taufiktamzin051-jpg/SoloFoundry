@@ -1,33 +1,61 @@
 import os
-import requests
 import time
-from google import genai
-from google.genai import errors
 import tweepy
+import requests
+from google import genai
 
-# Setup
+# Inisialisasi
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
-# Tambahkan Jeda (Sleep) agar tidak kena limit
-def execute():
-    try:
-        print("Pabrik mulai beroperasi (Mode Sabar)...")
-        time.sleep(30) # Tunggu 30 detik agar server stabil
-        
-        # Generate dengan model yang paling ringan
-        judul_res = client.models.generate_content(model="gemini-2.0-flash-lite", contents="Create a catchy title for an AI productivity e-book.")
-        time.sleep(10) # Jeda antar request
-        isi_res = client.models.generate_content(model="gemini-2.0-flash-lite", contents="Write a short, professional e-book about AI productivity tips.")
-        
-        judul = judul_res.text.strip()
-        
-        # Upload ke Gumroad
-        # (Pastikan GUMROAD_ACCESS_TOKEN sudah benar di Secrets)
-        upload_ke_gumroad(judul, isi_res.text)
-        
-        print(f"Produk '{judul}' berhasil dibuat!")
-        
-    except Exception as e:
-        print(f"Gagal karena: {e}")
+# 1. Fungsi Posting Twitter
+def post_to_twitter(text):
+    auth = tweepy.OAuth1UserHandler(
+        os.getenv("TWITTER_CONSUMER_KEY"), os.getenv("TWITTER_CONSUMER_SECRET"),
+        os.getenv("TWITTER_ACCESS_TOKEN"), os.getenv("TWITTER_ACCESS_SECRET")
+    )
+    api = tweepy.API(auth)
+    api.update_status(text)
+    print("Berhasil posting ke Twitter!")
 
-# ... (fungsi upload_ke_gumroad dan posting_twitter tetap sama)
+# 2. Fungsi Upload Gumroad
+def upload_ke_gumroad(title, description):
+    url = "https://api.gumroad.com/v2/products"
+    data = {
+        "access_token": os.getenv("GUMROAD_ACCESS_TOKEN"),
+        "product[name]": title,
+        "product[description]": description,
+        "product[price]": 0, # Harga 0 (gratis) atau ubah sesuai keinginan
+        "product[published]": "true"
+    }
+    response = requests.post(url, data=data)
+    if response.status_code == 200:
+        print("Berhasil upload ke Gumroad!")
+    else:
+        print(f"Gagal upload Gumroad: {response.text}")
+
+# 3. Fungsi Utama
+def run_factory():
+    print("Pabrik mulai beroperasi...")
+    
+    # Generate Judul
+    judul_res = client.models.generate_content(model="gemini-2.0-flash", contents="Buatkan judul produk digital yang menarik")
+    judul = judul_res.text.strip()
+    
+    time.sleep(5)
+    
+    # Generate Deskripsi
+    isi_res = client.models.generate_content(model="gemini-2.0-flash", contents=f"Buatkan deskripsi singkat untuk produk: {judul}")
+    isi = isi_res.text
+    
+    # Eksekusi
+    upload_ke_gumroad(judul, isi)
+    post_to_twitter(f"Produk baru rilis: {judul}! Cek sekarang.")
+    
+    print("Semua proses selesai!")
+
+if __name__ == "__main__":
+    try:
+        run_factory()
+    except Exception as e:
+        print(f"Error terjadi: {e}")
+    
