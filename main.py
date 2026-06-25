@@ -1,43 +1,48 @@
-import os
-import sys
 import time
-import datetime
-import tweepy
-import requests
-from google import genai
+import google.generativeai as genai
+from google.api_core import exceptions
 
-# Inisialisasi
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+# Inisialisasi model
+genai.configure(api_key="YOUR_API_KEY")
+model = genai.GenerativeModel('gemini-2.0-flash')
 
-# Jadwal
-JADWAL = {0: "E-book", 1: "Notion Template", 2: "Graphic Asset", 3: "Course Outline", 4: "UI/UX Kit", 5: "Worksheet", 6: "Newsletter"}
-
-def run_factory():
-    # 1. Tentukan jenis
-    jenis = JADWAL.get(datetime.datetime.now().weekday(), "Digital Asset")
-    print(f"🚀 Memproduksi: {jenis}")
-
-    # 2. Generate
-    judul = client.models.generate_content(model="gemini-2.0-flash", contents=f"Title for {jenis} in English").text.strip()
-    time.sleep(5)
-    isi = client.models.generate_content(model="gemini-2.0-flash", contents=f"Description for '{judul}'").text
-
-    # 3. Gumroad
-    res = requests.post("https://api.gumroad.com/v2/products", data={
-        "access_token": os.getenv("GUMROAD_ACCESS_TOKEN"),
-        "product[name]": judul, "product[description]": isi, "product[price]": 0, "product[published]": "true"
-    })
+def get_ai_response(prompt):
+    """Fungsi produksi konten dengan proteksi limit API."""
+    max_retries = 5
+    wait_time = 15  # Detik awal menunggu
     
-    if res.status_code == 200:
-        url = res.json()['product']['url']
-        # 4. Twitter
-        auth = tweepy.OAuth1UserHandler(os.getenv("TWITTER_CONSUMER_KEY"), os.getenv("TWITTER_CONSUMER_SECRET"), os.getenv("TWITTER_ACCESS_TOKEN"), os.getenv("TWITTER_ACCESS_SECRET"))
-        tweepy.API(auth).update_status(f"New {jenis}: {judul}! Get it here: {url}")
-        print("✅ Selesai!")
-    else:
-        print(f"❌ Error: {res.text}")
+    for attempt in range(max_retries):
+        try:
+            # Panggilan API utama
+            response = model.generate_content(prompt)
+            return response.text
+        
+        except exceptions.ResourceExhausted:
+            print(f"Peringatan: Limit API penuh. Menunggu {wait_time} detik... (Percobaan {attempt + 1})")
+            time.sleep(wait_time)
+            wait_time *= 2  # Exponential backoff: waktu tunggu bertambah
+        
+        except Exception as e:
+            print(f"Error tak terduga: {e}")
+            break
+            
+    return None
 
-if __name__ == "__main__":
-    run_factory()
-    sys.exit(0) # Memaksa program berhenti seketika
-    
+# --- Bagian Workflow Utama Anda ---
+def run_production_pipeline(prompt_list):
+    for i, prompt in enumerate(prompt_list):
+        print(f"Memproduksi konten {i+1}/{len(prompt_list)}...")
+        
+        result = get_ai_response(prompt)
+        
+        if result:
+            # Di sini logika simpan ke file Anda (misal: write to file)
+            print("Konten berhasil dibuat.")
+        else:
+            print("Gagal memproduksi konten setelah beberapa kali percobaan.")
+        
+        # Jeda antar konten agar tidak kena limit RPM (Requests Per Minute)
+        time.sleep(10) 
+
+# Jalankan
+# run_production_pipeline(your_prompts)
