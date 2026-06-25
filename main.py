@@ -1,26 +1,29 @@
 import os
+from datetime import datetime
 import google.generativeai as genai
 
-# Konfigurasi API
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-model = genai.GenerativeModel('gemini-2.0-flash')
+model = genai.GenerativeModel('gemini-1.5-flash')
 
-def generate_and_save():
-    # 1. Prompt Anda (Silakan ganti sesuai kebutuhan)
-    prompt = "Buatkan 5 prompt marketing untuk menjual produk digital di Lemon Squeezy."
-    
-    # 2. Proses AI
-    print("AI sedang bekerja...")
-    response = model.generate_content(prompt)
-    
-    # 3. Simpan ke file
-    file_name = "hasil_produksi.md"
-    with open(file_name, "w", encoding="utf-8") as f:
-        f.write("# Hasil Produksi AI\n\n")
-        f.write(response.text)
-    
-    print(f"Berhasil! File {file_name} telah dibuat.")
+prompt = """
+Buatkan konten produk digital "Cheat Sheet Panduan Strategi" untuk Pemilik Bisnis Digital Pemula.
+Format output:
+[JUDUL PRODUK]
+(Judul menarik & menjual)
+[MASALAH UTAMA]
+(3 poin masalah)
+[SOLUSI/CHEAT SHEET]
+(5 langkah praktis)
+[HARGA SARAN]
+($9 - $27)
+[KEYWORD SEO]
+(5 tag)
+"""
 
-if __name__ == "__main__":
-    generate_and_save()
-    
+response = model.generate_content(prompt)
+file_name = f"produksi_{datetime.now().strftime('%Y-%m-%d')}.md"
+
+with open(file_name, "w", encoding="utf-8") as f:
+    f.write(response.text)
+
+print(f"Produksi selesai: {file_name}")
