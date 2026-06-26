@@ -2,22 +2,28 @@ import os
 from datetime import datetime
 import google.generativeai as genai
 
-# Konfigurasi API
+# Konfigurasi
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-# Gunakan model yang paling stabil dan tersedia secara universal
-model = genai.GenerativeModel('gemini-1.5-flash')
+def get_best_model():
+    # Daftar model yang ingin dicoba
+    models_to_try = ['gemini-1.5-flash', 'gemini-pro', 'gemini-1.0-pro']
+    for m in genai.list_models():
+        if m.name in [f"models/{n}" for n in models_to_try]:
+            return m.name
+    return 'gemini-pro' # fallback
 
 try:
-    # Prompt untuk menghasilkan konten
-    prompt = "Tuliskan 1 ide produk digital untuk pemula dengan format: [JUDUL], [MASALAH], [SOLUSI]."
+    model_name = get_best_model()
+    model = genai.GenerativeModel(model_name)
+    
+    prompt = "Tuliskan 1 ide produk digital unik untuk pemula. Format: Judul, Masalah, Solusi."
     response = model.generate_content(prompt)
     
-    # Simpan file dengan nama berdasarkan tanggal
     file_name = f"produksi_{datetime.now().strftime('%Y-%m-%d')}.md"
     with open(file_name, "w", encoding="utf-8") as f:
         f.write(response.text)
-    print(f"File berhasil dibuat: {file_name}")
+    print(f"Sukses menggunakan {model_name}: {file_name}")
 
 except Exception as e:
-    print(f"Gagal generate konten: {e}")
+    print(f"Gagal total: {e}")
