@@ -2,26 +2,17 @@ import os
 from datetime import datetime
 import google.generativeai as genai
 
-# Konfigurasi
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 model = genai.GenerativeModel('gemini-1.5-flash')
 
-try:
-    prompt = """Buatkan konten produk digital "Cheat Sheet Panduan Strategi" untuk Pemilik Bisnis Digital Pemula.
-    Format output:
-    [JUDUL PRODUK]
-    [MASALAH UTAMA]
-    [SOLUSI/CHEAT SHEET]
-    [HARGA SARAN]
-    [KEYWORD SEO]"""
-    
-    response = model.generate_content(prompt)
-    
-    file_name = f"produksi_{datetime.now().strftime('%Y-%m-%d')}.md"
-    with open(file_name, "w", encoding="utf-8") as f:
-        f.write(response.text)
-    print(f"Produksi sukses: {file_name}")
+# Paksa generate konten
+response = model.generate_content("Tuliskan 1 ide produk digital unik untuk pemula.")
 
-except Exception as e:
-    print(f"Produksi gagal (Kemungkinan kuota habis): {e}")
-    
+# Pastikan nama file sesuai tanggal hari ini
+file_name = f"produksi_{datetime.now().strftime('%Y-%m-%d')}.md"
+
+# Simpan file secara paksa
+with open(file_name, "w", encoding="utf-8") as f:
+    f.write(response.text)
+
+print(f"File {file_name} berhasil dibuat.")
